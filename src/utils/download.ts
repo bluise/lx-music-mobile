@@ -21,10 +21,10 @@ export const qualityToExt = (quality: LX.Quality): LX.Download.FileExt => {
 
 /**
  * 获取下载保存目录
- * 默认使用应用外部存储目录下的 Music 文件夹
+ * 默认使用设备公共存储目录下的 Music/lx-music 文件夹，用户可在文件管理器中找到
  */
 export const getDownloadDir = async(): Promise<string> => {
-  const dir = `${RNFS.ExternalDirectoryPath}/Music`
+  const dir = `${RNFS.ExternalStorageDirectoryPath}/Music/lx-music`
   if (!await existsFile(dir)) {
     await mkdir(dir)
   }
