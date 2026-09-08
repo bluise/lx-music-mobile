@@ -1,6 +1,7 @@
 import { addListMusics, removeListMusics, updateListMusicPosition, updateListMusics } from '@/core/list'
 import { playList, playListById, playNext } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
+import { addDownload, addDownloads } from '@/core/download'
 import settingState from '@/store/setting/state'
 import { similar, sortInsert, toOldMusicInfo } from '@/utils'
 import { confirmDialog, openUrl, shareMusic, toast } from '@/utils/tools'
@@ -115,6 +116,19 @@ export const handleShowMusicSourceDetail = async(minfo: SelectInfo['musicInfo'])
   const url = musicSdk[minfo.source as LX.OnlineSource]?.getMusicDetailPageUrl(toOldMusicInfo(minfo))
   if (!url) return
   void openUrl(url)
+}
+
+export const handleDownload = (musicInfo: SelectInfo['musicInfo'], selectedList: SelectInfo['selectedList']) => {
+  const onlineList = (selectedList.length ? selectedList : [musicInfo]).filter(
+    (m): m is LX.Music.MusicInfoOnline => m.source != 'local',
+  )
+  if (!onlineList.length) return
+  if (onlineList.length > 1) {
+    addDownloads(onlineList)
+    toast(global.i18n.t('download_added_tasks', { num: onlineList.length }))
+  } else {
+    void addDownload(onlineList[0])
+  }
 }
 
 

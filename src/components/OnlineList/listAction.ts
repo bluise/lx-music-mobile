@@ -2,6 +2,7 @@ import { LIST_IDS } from '@/config/constant'
 import { addListMusics } from '@/core/list'
 import { playList, playNext } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
+import { addDownload, addDownloads } from '@/core/download'
 import settingState from '@/store/setting/state'
 import { getListMusicSync } from '@/utils/listManage'
 import { confirmDialog, openUrl, shareMusic, toast } from '@/utils/tools'
@@ -35,6 +36,15 @@ export const handleShowMusicSourceDetail = async(minfo: LX.Music.MusicInfoOnline
   const url = musicSdk[minfo.source as LX.OnlineSource]?.getMusicDetailPageUrl(toOldMusicInfo(minfo))
   if (!url) return
   void openUrl(url)
+}
+
+export const handleDownload = (musicInfo: LX.Music.MusicInfoOnline, selectedList: LX.Music.MusicInfoOnline[]) => {
+  if (selectedList.length) {
+    addDownloads(selectedList)
+    toast(global.i18n.t('download_added_tasks', { num: selectedList.length }))
+  } else {
+    void addDownload(musicInfo)
+  }
 }
 
 

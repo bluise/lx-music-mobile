@@ -8,6 +8,7 @@ import { bootLog } from '@/utils/bootLog'
 import { getDislikeInfo, setDislikeInfo } from '@/core/dislikeList'
 import { unlink } from '@/utils/fs'
 import { TEMP_FILE_PATH } from '@/utils/tools'
+import { loadDownloadList } from '@/core/download'
 // import { play, playList } from '../player/player'
 
 // const initPrevPlayInfo = async(appSetting: LX.AppSetting) => {
@@ -33,5 +34,6 @@ export default async(appSetting: LX.AppSetting) => {
   bootLog('User list inited.')
   setNavActiveId((await getViewPrevState()).id)
   void unlink(TEMP_FILE_PATH)
+  void loadDownloadList()
   // await initPrevPlayInfo(appSetting).catch(err => log.error(err)) // 初始化上次的歌曲播放信息
 }
