@@ -497,11 +497,20 @@ export const removeSyncHostHistory = async(index: number) => {
 
 let userApis: LX.UserApi.UserApiInfo[] = []
 
-// 将内置音源信息合并进返回列表（始终置顶，且不可删除）
+// 将内置音源信息合并进返回列表（始终置顶，且不可删除）。
+// 优先用列表里已有的条目（说明 fetch 成功解析过最新版本号），没有则回退到硬编码兜底。
 const mergeBuiltinUserApi = (list: LX.UserApi.UserApiInfo[]): LX.UserApi.UserApiInfo[] => {
-  const result = list.filter(api => api.id !== BUILTIN_USER_API_ID)
-  result.unshift(BUILTIN_USER_API_INFO)
-  return result
+  const fromList = list.find(api => api.id === BUILTIN_USER_API_ID)
+  const others = list.filter(api => api.id !== BUILTIN_USER_API_ID)
+  const info: LX.UserApi.UserApiInfo = fromList
+    ? { ...fromList }
+    : { ...BUILTIN_USER_API_INFO }
+  // 版本号硬编码兜底如果更旧，用上新解析的；否则保持一致
+  if (info.version !== BUILTIN_USER_API_INFO.version) {
+    info.version = info.version || BUILTIN_USER_API_INFO.version
+  }
+  others.unshift(info)
+  return others
 }
 
 // 内置音源脚本和用户上传的音源脚本存储在同一个 AsyncStorage 命名空间：
@@ -530,8 +539,8 @@ const fetchBuiltinScriptFromUrl = async(): Promise<string> => {
   }
 }
 
-// 后台刷新内置音源脚本：带时间节流，6 小时内只检查一次。
-// 启动时 + App 回前台时调用，但真正发起 fetch 取决于上次检查时间。
+// 后台刷新内置音源脚本：带时间节流，成功后每周检查一次。
+// 失败不记时间戳 → 下次启动/回前台还会继续尝试，不会被节流挡住。
 export const refreshBuiltinUserApiScript = async(): Promise<{ changed: boolean }> => {
   const now = Date.now()
   const lastCheck = await getData<number>(builtinUserApiLastCheckKey)
@@ -549,16 +558,32 @@ export const refreshBuiltinUserApiScript = async(): Promise<{ changed: boolean }
     if (prev == null) {
       void saveData(builtinUserApiScriptKey, BUILTIN_USER_API_FALLBACK_SCRIPT)
     }
-    void saveData(builtinUserApiLastCheckKey, now)
+    // 失败不写 lastCheck → 下次还会尝试
     return { changed: false }
   }
   if (!script) {
     if (prev == null) void saveData(builtinUserApiScriptKey, BUILTIN_USER_API_FALLBACK_SCRIPT)
-    void saveData(builtinUserApiLastCheckKey, now)
+    // 失败不写 lastCheck → 下次还会尝试
     return { changed: false }
   }
   void saveData(builtinUserApiScriptKey, script)
-  void saveData(builtinUserApiLastCheckKey, now)
+  void saveData(builtinUserApiLastCheckKey, now)  // 只有成功才记时间戳
+  // 解析最新脚本头部，更新内置音源 Info（版本号等）到列表，设置页能看到最新版本
+  const headerMatch = /^\/\*[\S|\s]+?\*\//.exec(script)
+  if (headerMatch) {
+    const parsed = matchInfo(headerMatch[0])
+    const list = await getData<LX.UserApi.UserApiInfo[]>(userApiPrefix) ?? []
+    const builtin: LX.UserApi.UserApiInfo = {
+      ...BUILTIN_USER_API_INFO,
+      ...parsed,
+      id: BUILTIN_USER_API_ID,
+      allowShowUpdateAlert: BUILTIN_USER_API_INFO.allowShowUpdateAlert,
+    }
+    const idx = list.findIndex(api => api.id === BUILTIN_USER_API_ID)
+    if (idx >= 0) list[idx] = builtin
+    else list.push(builtin)
+    void saveData(userApiPrefix, list)
+  }
   if (prev == null) return { changed: true }
   return { changed: script !== prev }
 }
