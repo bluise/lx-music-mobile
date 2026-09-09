@@ -504,7 +504,9 @@ const mergeBuiltinUserApi = (list: LX.UserApi.UserApiInfo[]): LX.UserApi.UserApi
   return result
 }
 
-const builtinUserApiScriptCacheKey = `${userApiPrefix}${BUILTIN_USER_API_ID}`
+// 内置音源脚本和用户上传的音源脚本存储在同一个 AsyncStorage 命名空间：
+// key = `${userApiPrefix}${id}`，和 addUserApi 完全一致。
+const builtinUserApiScriptKey = `${userApiPrefix}${BUILTIN_USER_API_ID}`
 
 // 从 update URL 拉取最新内置脚本（带超时）
 const fetchBuiltinScriptFromUrl = async(): Promise<string> => {
@@ -526,34 +528,27 @@ const fetchBuiltinScriptFromUrl = async(): Promise<string> => {
   }
 }
 
-// 获取内置脚本：优先从 URL 拉取最新并缓存；失败时回退到缓存，再回退到打包兜底
-export const getBuiltinUserApiScript = async(): Promise<string> => {
-  try {
-    const script = await fetchBuiltinScriptFromUrl()
-    void saveData(builtinUserApiScriptCacheKey, script)
-    return script
-  } catch (err) {
-    console.log('builtin user api fetch failed, fallback to cache', err)
-    const cached = await getData<string>(builtinUserApiScriptCacheKey)
-    if (cached) return cached
-    return BUILTIN_USER_API_FALLBACK_SCRIPT
-  }
-}
-
-// 后台刷新内置脚本缓存：无论之前是否有缓存，都尝试拉取最新版本。
-// 若脚本变化且内置音源正活动，调用方会触发重新加载。
+// 后台刷新内置音源脚本：从 URL 拉取最新，存进和用户上传音源同一个 key。
+// 启动时 + App 回前台时调用，确保每次联网都能自动更新上游脚本。
 export const refreshBuiltinUserApiScript = async(): Promise<{ changed: boolean }> => {
-  const prev = await getData<string>(builtinUserApiScriptCacheKey)
+  const prev = await getData<string>(builtinUserApiScriptKey)
   let script: string
   try {
     script = await fetchBuiltinScriptFromUrl()
   } catch (err) {
     console.log('builtin user api refresh failed', err)
+    // 首次安装也拉不到 → 把打包兜底存进，保证后续 getData 有值
+    if (prev == null) {
+      void saveData(builtinUserApiScriptKey, BUILTIN_USER_API_FALLBACK_SCRIPT)
+    }
     return { changed: false }
   }
-  if (!script) return { changed: false }
-  void saveData(builtinUserApiScriptCacheKey, script)
-  if (prev == null) return { changed: true } // 首次播种缓存也算变更
+  if (!script) {
+    if (prev == null) void saveData(builtinUserApiScriptKey, BUILTIN_USER_API_FALLBACK_SCRIPT)
+    return { changed: false }
+  }
+  void saveData(builtinUserApiScriptKey, script)
+  if (prev == null) return { changed: true }
   return { changed: script !== prev }
 }
 
@@ -572,10 +567,14 @@ export const getUserApiList = async(): Promise<LX.UserApi.UserApiInfo[]> => {
 
   return mergeBuiltinUserApi([...userApis])
 }
+
+// 获取音源脚本：内置和用户上传走同一条存储路径（AsyncStorage key = @user_api${id}）。
+// 唯一差别：内置音源在没有缓存时回退到打包兜底脚本，用户上传则返回空。
 export const getUserApiScript = async(id: string): Promise<string> => {
-  if (id === BUILTIN_USER_API_ID) return getBuiltinUserApiScript()
-  const script = await getData<string>(`${userApiPrefix}${id}`) ?? ''
-  return script
+  const script = await getData<string>(`${userApiPrefix}${id}`)
+  if (script) return script
+  if (id === BUILTIN_USER_API_ID) return BUILTIN_USER_API_FALLBACK_SCRIPT
+  return ''
 }
 
 const INFO_NAMES = {
