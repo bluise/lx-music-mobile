@@ -19,7 +19,6 @@ export default ({ componentId }: Props) => {
   const [regCode, setRegCode] = useState('')
   const [verifying, setVerifying] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [permissionDenied, setPermissionDenied] = useState(false)
   const [loadingDeviceId, setLoadingDeviceId] = useState(false)
 
   // 获取设备码（先确保已授权）
@@ -52,30 +51,16 @@ export default ({ componentId }: Props) => {
     }
   }, [])
 
-  // 进入页面时自动请求权限，授权后加载设备码
+  // 进入页面时自动请求权限，授权后（或拒绝后）加载设备码
   useEffect(() => {
     let mounted = true
     void (async() => {
-      const ok = await requestPhonePermission()
+      // 请求权限（用于读取 IMEI 增加唯一性，不授权也可从硬件信息生成设备码）
+      await requestPhonePermission()
       if (!mounted) return
-      if (ok) {
-        setPermissionDenied(false)
-        await loadDeviceId()
-      } else {
-        setPermissionDenied(true)
-      }
+      await loadDeviceId()
     })()
     return () => { mounted = false }
-  }, [requestPhonePermission, loadDeviceId])
-
-  const handleRetryPermission = useCallback(async() => {
-    const ok = await requestPhonePermission()
-    if (ok) {
-      setPermissionDenied(false)
-      await loadDeviceId()
-    } else {
-      setPermissionDenied(true)
-    }
   }, [requestPhonePermission, loadDeviceId])
 
   const handleCopy = useCallback(() => {
@@ -142,20 +127,9 @@ export default ({ componentId }: Props) => {
               </TouchableOpacity>
             ) : null}
           </View>
-          {permissionDenied ? (
-            <View>
-              <Text size={11} color="#e74c3c" style={styles.tip}>
-                需要「读取设备信息」权限才能获取设备码，请授权后重试。
-              </Text>
-              <TouchableOpacity onPress={handleRetryPermission} style={styles.retryBtn}>
-                <Text size={12} color={theme['c-primary-font']}>点击重新授权</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <Text size={11} color={theme['c-font-label']} style={styles.tip}>
-              将设备码发送给管理员获取注册码，每台手机仅需注册一次
-            </Text>
-          )}
+          <Text size={11} color={theme['c-font-label']} style={styles.tip}>
+            将设备码发送给管理员获取注册码，每台手机仅需注册一次
+          </Text>
         </View>
 
         <View style={styles.section}>
@@ -235,11 +209,6 @@ const styles = createStyle({
   },
   copyBtn: {
     paddingLeft: 12,
-    paddingVertical: 4,
-  },
-  retryBtn: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
     paddingVertical: 4,
   },
   inputBox: {

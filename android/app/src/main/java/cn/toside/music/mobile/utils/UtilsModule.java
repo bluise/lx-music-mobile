@@ -236,31 +236,75 @@ public class UtilsModule extends ReactContextBaseJavaModule {
 
   /**
    * 获取设备唯一标识
-   * 优先读取 IMEI（设备串号），需要 READ_PHONE_STATE 权限；
-   * 若 IMEI 不可用（如 Android 10+ 限制），回退到 Android ID。
-   * 用于软件注册绑定设备，换手机后标识会不同，需要重新注册。
+   * 采用多硬件标识组合指纹的方式：
+   *   IMEI（需权限）+ Android ID + Build 系列硬件信息（厂商/型号/指纹等）
+   * 将所有有效标识拼接后 MD5 哈希，取前 16 位作为设备码。
+   * 这样即使 IMEI 不可用（Android 10+ 限制）或 Android ID 为全 0，
+   * 仍能通过硬件信息组合生成唯一标识，换手机后指纹会变化。
    */
   @ReactMethod
   public void getDeviceId(final Promise promise) {
     try {
-      String deviceId = getImei();
-      if (isInvalidId(deviceId)) {
-        deviceId = Settings.Secure.getString(
-          reactContext.getContentResolver(),
-          Settings.Secure.ANDROID_ID
-        );
-      }
-      // 如果还是无效，尝试 Build.SERIAL（旧版本设备）
-      if (isInvalidId(deviceId) && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-        try {
+      StringBuilder sb = new StringBuilder();
+
+      // 1. IMEI（设备串号，需 READ_PHONE_STATE 权限）
+      String imei = getImei();
+      if (!isInvalidId(imei)) sb.append("IMEI:").append(imei).append('|');
+
+      // 2. Android ID
+      String androidId = Settings.Secure.getString(
+        reactContext.getContentResolver(),
+        Settings.Secure.ANDROID_ID
+      );
+      if (!isInvalidId(androidId)) sb.append("AID:").append(androidId).append('|');
+
+      // 3. Build 系列硬件信息（无需权限）
+      appendBuildField(sb, "BRAND", Build.BRAND);
+      appendBuildField(sb, "MANUFACTURER", Build.MANUFACTURER);
+      appendBuildField(sb, "MODEL", Build.MODEL);
+      appendBuildField(sb, "DEVICE", Build.DEVICE);
+      appendBuildField(sb, "PRODUCT", Build.PRODUCT);
+      appendBuildField(sb, "HARDWARE", Build.HARDWARE);
+      appendBuildField(sb, "BOARD", Build.BOARD);
+      appendBuildField(sb, "FINGERPRINT", Build.FINGERPRINT);
+
+      // 4. Build.SERIAL（旧版本设备）
+      try {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
           //noinspection deprecation
-          deviceId = Build.SERIAL;
-        } catch (Exception ignored) {}
-      }
-      promise.resolve(deviceId != null ? deviceId.toUpperCase() : "");
+          appendBuildField(sb, "SERIAL", Build.SERIAL);
+        }
+      } catch (Exception ignored) {}
+
+      String fingerprint = sb.toString();
+      String deviceId = md5Hex(fingerprint).substring(0, 16).toUpperCase();
+
+      promise.resolve(deviceId);
     } catch (Exception e) {
       Log.e("Utils", "getDeviceId error", e);
       promise.resolve("");
+    }
+  }
+
+  private void appendBuildField(StringBuilder sb, String key, String value) {
+    if (value != null && !value.isEmpty()) {
+      sb.append(key).append(':').append(value).append('|');
+    }
+  }
+
+  /** MD5 哈希，返回 32 位十六进制小写 */
+  private String md5Hex(String input) {
+    try {
+      java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+      byte[] digest = md.digest(input.getBytes("UTF-8"));
+      StringBuilder sb = new StringBuilder();
+      for (byte b : digest) {
+        sb.append(String.format("%02x", b & 0xff));
+      }
+      return sb.toString();
+    } catch (Exception e) {
+      Log.e("Utils", "md5Hex error", e);
+      return "";
     }
   }
 
