@@ -507,6 +507,8 @@ const mergeBuiltinUserApi = (list: LX.UserApi.UserApiInfo[]): LX.UserApi.UserApi
 // 内置音源脚本和用户上传的音源脚本存储在同一个 AsyncStorage 命名空间：
 // key = `${userApiPrefix}${id}`，和 addUserApi 完全一致。
 const builtinUserApiScriptKey = `${userApiPrefix}${BUILTIN_USER_API_ID}`
+const builtinUserApiLastCheckKey = `${userApiPrefix}${BUILTIN_USER_API_ID}_last_check`
+const BUILTIN_USER_API_CHECK_INTERVAL = 6 * 60 * 60 * 1000 // 6 小时内只检查一次更新
 
 // 从 update URL 拉取最新内置脚本（带超时）
 const fetchBuiltinScriptFromUrl = async(): Promise<string> => {
@@ -528,9 +530,15 @@ const fetchBuiltinScriptFromUrl = async(): Promise<string> => {
   }
 }
 
-// 后台刷新内置音源脚本：从 URL 拉取最新，存进和用户上传音源同一个 key。
-// 启动时 + App 回前台时调用，确保每次联网都能自动更新上游脚本。
+// 后台刷新内置音源脚本：带时间节流，6 小时内只检查一次。
+// 启动时 + App 回前台时调用，但真正发起 fetch 取决于上次检查时间。
 export const refreshBuiltinUserApiScript = async(): Promise<{ changed: boolean }> => {
+  const now = Date.now()
+  const lastCheck = await getData<number>(builtinUserApiLastCheckKey)
+  if (lastCheck != null && now - lastCheck < BUILTIN_USER_API_CHECK_INTERVAL) {
+    return { changed: false, throttled: true } as any
+  }
+
   const prev = await getData<string>(builtinUserApiScriptKey)
   let script: string
   try {
@@ -541,13 +549,16 @@ export const refreshBuiltinUserApiScript = async(): Promise<{ changed: boolean }
     if (prev == null) {
       void saveData(builtinUserApiScriptKey, BUILTIN_USER_API_FALLBACK_SCRIPT)
     }
+    void saveData(builtinUserApiLastCheckKey, now)
     return { changed: false }
   }
   if (!script) {
     if (prev == null) void saveData(builtinUserApiScriptKey, BUILTIN_USER_API_FALLBACK_SCRIPT)
+    void saveData(builtinUserApiLastCheckKey, now)
     return { changed: false }
   }
   void saveData(builtinUserApiScriptKey, script)
+  void saveData(builtinUserApiLastCheckKey, now)
   if (prev == null) return { changed: true }
   return { changed: script !== prev }
 }
