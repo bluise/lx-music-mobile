@@ -9,7 +9,6 @@ import { navigations } from '@/navigation'
 import settingState from '@/store/setting/state'
 import { useBackHandler } from '@/utils/hooks/useBackHandler'
 import commonState from '@/store/common/state'
-import { toast } from '@/utils/tools'
 
 
 interface Props {
@@ -20,18 +19,18 @@ interface Props {
 export default ({ componentId }: Props) => {
   const isHorizontalMode = useHorizontalMode()
 
-  // [测试] 无条件拦截所有返回键，确认 BackHandler 有没有被调到
-  // 能看到 toast → handler 被调了，问题在条件判断
-  // 看不到 toast → handler 根本没被调，问题在 native/RNN 层
+  // 根 stack 上拦截所有返回键，不让 app 退出：
+  // - 非歌单/设置 tab → 切到歌单页
+  // - 歌单页/设置页 → 拦截住，不做动作（或由 Setting 组件自己处理）
+  // - 非根 stack → 返回 false 让 RNN 正常 pop
   useBackHandler(useCallback(() => {
     const ids = Object.keys(commonState.componentIds)
-    toast(`BACK: ids=${ids.length} (${ids.join(',')}) nav=${commonState.navActiveId}`)
-
-    if (ids.length == 1 && ids[0] == COMPONENT_IDS.home) {
+    if (ids.length <= 1) {
+      // 在根 stack，拦截住，不让 RNN finish
       if (commonState.navActiveId != 'nav_songlist' && commonState.navActiveId != 'nav_setting') {
         setNavActiveId('nav_songlist')
-        return true
       }
+      return true
     }
     return false
   }, []))
