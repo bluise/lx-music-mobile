@@ -22,7 +22,7 @@ if (process.versions == null) {
 
 
 global.lx = {
-  fontSize: 1,
+  fontSize: 1.2,
   playerStatus: {
     isInitialized: false,
     isRegisteredService: false,
