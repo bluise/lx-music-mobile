@@ -17,6 +17,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- 读取手机 IMEI（设备串号），用于软件注册绑定设备 -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <application
       android:name=".MainApplication"

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, TouchableOpacity } from 'react-native'
+import { View, TouchableOpacity, PermissionsAndroid } from 'react-native'
 import Text from '@/components/common/Text'
 import ButtonPrimary from '@/components/common/ButtonPrimary'
 import Input from '@/components/common/Input'
@@ -19,10 +19,64 @@ export default ({ componentId }: Props) => {
   const [regCode, setRegCode] = useState('')
   const [verifying, setVerifying] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [permissionDenied, setPermissionDenied] = useState(false)
+  const [loadingDeviceId, setLoadingDeviceId] = useState(false)
 
-  useEffect(() => {
-    void getCurrentDeviceId().then(setDeviceId)
+  // 获取设备码（先确保已授权）
+  const loadDeviceId = useCallback(async() => {
+    setLoadingDeviceId(true)
+    setErrorMsg('')
+    try {
+      const id = await getCurrentDeviceId()
+      setDeviceId(id || '')
+    } finally {
+      setLoadingDeviceId(false)
+    }
   }, [])
+
+  // 请求读取手机状态权限（用于获取 IMEI 串号）
+  const requestPhonePermission = useCallback(async(): Promise<boolean> => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+        {
+          title: '需要读取设备信息',
+          message: '阿汤音乐需要读取您的设备串号（IMEI），用于软件注册绑定本机。\n换手机后需要重新注册。',
+          buttonPositive: '允许',
+          buttonNegative: '拒绝',
+        },
+      )
+      return granted === PermissionsAndroid.RESULTS.GRANTED
+    } catch {
+      return false
+    }
+  }, [])
+
+  // 进入页面时自动请求权限，授权后加载设备码
+  useEffect(() => {
+    let mounted = true
+    void (async() => {
+      const ok = await requestPhonePermission()
+      if (!mounted) return
+      if (ok) {
+        setPermissionDenied(false)
+        await loadDeviceId()
+      } else {
+        setPermissionDenied(true)
+      }
+    })()
+    return () => { mounted = false }
+  }, [requestPhonePermission, loadDeviceId])
+
+  const handleRetryPermission = useCallback(async() => {
+    const ok = await requestPhonePermission()
+    if (ok) {
+      setPermissionDenied(false)
+      await loadDeviceId()
+    } else {
+      setPermissionDenied(true)
+    }
+  }, [requestPhonePermission, loadDeviceId])
 
   const handleCopy = useCallback(() => {
     if (!deviceId) return
@@ -80,15 +134,28 @@ export default ({ componentId }: Props) => {
             borderColor: theme['c-border-background'],
           }}>
             <Text size={14} color={theme['c-primary-font']} style={styles.deviceIdText} selectable>
-              {deviceId || '获取中...'}
+              {deviceId || (loadingDeviceId ? '获取中...' : '未获取')}
             </Text>
-            <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
-              <Text size={12} color={theme['c-primary-font']}>复制</Text>
-            </TouchableOpacity>
+            {deviceId ? (
+              <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
+                <Text size={12} color={theme['c-primary-font']}>复制</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
-          <Text size={11} color={theme['c-font-label']} style={styles.tip}>
-            将设备码发送给管理员获取注册码，每台手机仅需注册一次
-          </Text>
+          {permissionDenied ? (
+            <View>
+              <Text size={11} color="#e74c3c" style={styles.tip}>
+                需要「读取设备信息」权限才能获取设备码，请授权后重试。
+              </Text>
+              <TouchableOpacity onPress={handleRetryPermission} style={styles.retryBtn}>
+                <Text size={12} color={theme['c-primary-font']}>点击重新授权</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text size={11} color={theme['c-font-label']} style={styles.tip}>
+              将设备码发送给管理员获取注册码，每台手机仅需注册一次
+            </Text>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -168,6 +235,11 @@ const styles = createStyle({
   },
   copyBtn: {
     paddingLeft: 12,
+    paddingVertical: 4,
+  },
+  retryBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
     paddingVertical: 4,
   },
   inputBox: {

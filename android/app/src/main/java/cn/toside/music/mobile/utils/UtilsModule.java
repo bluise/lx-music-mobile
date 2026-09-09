@@ -235,20 +235,67 @@ public class UtilsModule extends ReactContextBaseJavaModule {
   }
 
   /**
-   * 获取设备唯一标识（Android ID）
-   * 用于软件注册绑定设备，换手机后 Android ID 会不同，需要重新注册
+   * 获取设备唯一标识
+   * 优先读取 IMEI（设备串号），需要 READ_PHONE_STATE 权限；
+   * 若 IMEI 不可用（如 Android 10+ 限制），回退到 Android ID。
+   * 用于软件注册绑定设备，换手机后标识会不同，需要重新注册。
    */
   @ReactMethod
   public void getDeviceId(final Promise promise) {
     try {
-      String androidId = Settings.Secure.getString(
-        reactContext.getContentResolver(),
-        Settings.Secure.ANDROID_ID
-      );
-      promise.resolve(androidId != null ? androidId.toUpperCase() : "");
+      String deviceId = getImei();
+      if (isInvalidId(deviceId)) {
+        deviceId = Settings.Secure.getString(
+          reactContext.getContentResolver(),
+          Settings.Secure.ANDROID_ID
+        );
+      }
+      // 如果还是无效，尝试 Build.SERIAL（旧版本设备）
+      if (isInvalidId(deviceId) && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+        try {
+          //noinspection deprecation
+          deviceId = Build.SERIAL;
+        } catch (Exception ignored) {}
+      }
+      promise.resolve(deviceId != null ? deviceId.toUpperCase() : "");
     } catch (Exception e) {
       Log.e("Utils", "getDeviceId error", e);
       promise.resolve("");
+    }
+  }
+
+  /** 判断 ID 是否无效（null、空、或全 0） */
+  private boolean isInvalidId(String id) {
+    if (id == null || id.isEmpty()) return true;
+    return id.matches("^0+$");
+  }
+
+  /**
+   * 获取 IMEI（设备串号）
+   * Android 10+ (API 29) 第三方应用无法获取 IMEI，会抛出 SecurityException，此时返回 null
+   */
+  @SuppressLint("HardwareIds")
+  private String getImei() {
+    try {
+      Object service = reactContext.getSystemService(Context.TELEPHONY_SERVICE);
+      if (!(service instanceof android.telephony.TelephonyManager)) return null;
+      android.telephony.TelephonyManager tm = (android.telephony.TelephonyManager) service;
+
+      String imei;
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        imei = tm.getImei();
+      } else {
+        //noinspection deprecation
+        imei = tm.getDeviceId();
+      }
+      return imei;
+    } catch (SecurityException e) {
+      // 无权限或 Android 10+ 限制
+      Log.w("Utils", "getImei: permission denied or restricted", e);
+      return null;
+    } catch (Exception e) {
+      Log.w("Utils", "getImei error", e);
+      return null;
     }
   }
   private String capitalize(String s) {
