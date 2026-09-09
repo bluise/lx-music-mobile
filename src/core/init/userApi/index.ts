@@ -2,6 +2,7 @@ import { type InitParams, onScriptAction, sendAction, type ResponseParams, type 
 import { log, setUserApi, setUserApiList, setUserApiStatus } from '@/core/userApi'
 import settingState from '@/store/setting/state'
 import BackgroundTimer from 'react-native-background-timer'
+import { AppState, type AppStateStatus } from 'react-native'
 import { fetchData } from './request'
 import { getUserApiList, refreshBuiltinUserApiScript } from '@/utils/data'
 import { BUILTIN_USER_API_ID } from '@/resources/userApi/builtin'
@@ -255,8 +256,19 @@ export default async(setting: LX.AppSetting) => {
 
   setUserApiList(await getUserApiList())
 
-  // 后台刷新内置音源脚本缓存，便于每次启动自动更新上游脚本。
-  // 若内置音源正处于活动状态且脚本发生变化，则重新加载以应用更新。
+  // 应用从后台切回前台时，尝试刷新内置音源脚本。
+  // 解决"启动时没网 → 连上网络后不重启也能更新"的问题。
+  const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    if (nextAppState !== 'active') return
+    void refreshBuiltinUserApiScript().then(({ changed }) => {
+      if (changed && settingState.setting['common.apiSource'] === BUILTIN_USER_API_ID) {
+        void setUserApi(BUILTIN_USER_API_ID).catch(err => console.log('reload builtin user api failed', err))
+      }
+    }).catch(err => console.log('refresh builtin user api on foreground failed', err))
+  }
+  AppState.addEventListener('change', handleAppStateChange)
+
+  // 启动时也刷新一次（带缓存对比，避免无意义 reload）
   void refreshBuiltinUserApiScript().then(({ changed }) => {
     if (changed && settingState.setting['common.apiSource'] === BUILTIN_USER_API_ID) {
       void setUserApi(BUILTIN_USER_API_ID).catch(err => console.log('reload builtin user api failed', err))

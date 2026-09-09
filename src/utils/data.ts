@@ -540,11 +540,10 @@ export const getBuiltinUserApiScript = async(): Promise<string> => {
   }
 }
 
-// 后台刷新内置脚本缓存，便于每次启动自动更新。
-// 仅当缓存已存在且内容变化时返回 changed=true，触发重新加载。
+// 后台刷新内置脚本缓存：无论之前是否有缓存，都尝试拉取最新版本。
+// 若脚本变化且内置音源正活动，调用方会触发重新加载。
 export const refreshBuiltinUserApiScript = async(): Promise<{ changed: boolean }> => {
   const prev = await getData<string>(builtinUserApiScriptCacheKey)
-  if (prev == null) return { changed: false }
   let script: string
   try {
     script = await fetchBuiltinScriptFromUrl()
@@ -552,11 +551,10 @@ export const refreshBuiltinUserApiScript = async(): Promise<{ changed: boolean }
     console.log('builtin user api refresh failed', err)
     return { changed: false }
   }
-  if (script && script !== prev) {
-    void saveData(builtinUserApiScriptCacheKey, script)
-    return { changed: true }
-  }
-  return { changed: false }
+  if (!script) return { changed: false }
+  void saveData(builtinUserApiScriptCacheKey, script)
+  if (prev == null) return { changed: true } // 首次播种缓存也算变更
+  return { changed: script !== prev }
 }
 
 export const getUserApiList = async(): Promise<LX.UserApi.UserApiInfo[]> => {
