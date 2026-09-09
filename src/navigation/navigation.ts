@@ -6,6 +6,7 @@ import {
   PLAY_DETAIL_SCREEN,
   SONGLIST_DETAIL_SCREEN,
   COMMENT_SCREEN,
+  REGISTRATION_SCREEN,
   // SETTING_SCREEN,
 } from './screenNames'
 
@@ -73,6 +74,39 @@ export async function pushHomeScreen() {
               },
               navigationBar: {
                 // visible: false,
+                backgroundColor: theme['c-content-background'],
+              },
+              layout: {
+                componentBackgroundColor: theme['c-content-background'],
+              },
+            },
+          },
+        }],
+      },
+    },
+  })
+}
+export async function pushRegistrationScreen() {
+  const theme = themeState.theme
+  return Navigation.setRoot({
+    root: {
+      stack: {
+        children: [{
+          component: {
+            name: REGISTRATION_SCREEN,
+            options: {
+              topBar: {
+                visible: false,
+                height: 0,
+                drawBehind: false,
+              },
+              statusBar: {
+                drawBehind: true,
+                visible: true,
+                style: getStatusBarStyle(theme.isDark),
+                backgroundColor: 'transparent',
+              },
+              navigationBar: {
                 backgroundColor: theme['c-content-background'],
               },
               layout: {

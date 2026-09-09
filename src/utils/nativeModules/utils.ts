@@ -27,6 +27,8 @@ export const getDeviceName = async(): Promise<string> => {
   return UtilsModule.getDeviceName().then((deviceName: string) => deviceName || 'Unknown')
 }
 
+export const getDeviceId = UtilsModule.getDeviceId as () => Promise<string>
+
 export const isNotificationsEnabled = UtilsModule.isNotificationsEnabled as () => Promise<boolean>
 
 export const requestNotificationPermission = async() => new Promise<boolean>((resolve) => {

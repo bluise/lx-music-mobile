@@ -7,6 +7,7 @@ import { exitApp } from './utils/nativeModules/utils'
 import { windowSizeTools } from './utils/windowSizeTools'
 import { listenLaunchEvent } from './navigation/regLaunchedEvent'
 import { tipDialog } from './utils/tools'
+import { isRegistered } from './utils/registration'
 
 console.log('starting app...')
 listenLaunchEvent()
@@ -51,6 +52,13 @@ void Promise.all([getFontSize(), windowSizeTools.init()]).then(async([fontSize])
     await handleInit()
     if (!isInited) return
     // import('@/utils/nativeModules/cryptoTest')
+
+    const registered = await isRegistered()
+    if (!registered) {
+      // 未注册，显示注册页
+      await navigations.pushRegistrationScreen()
+      return
+    }
 
     await navigations.pushHomeScreen().then(() => {
       void handlePushedHomeScreen()

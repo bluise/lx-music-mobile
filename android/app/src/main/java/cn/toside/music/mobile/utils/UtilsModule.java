@@ -12,6 +12,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Environment;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
@@ -230,6 +231,24 @@ public class UtilsModule extends ReactContextBaseJavaModule {
       promise.resolve(capitalize(model));
     } else {
       promise.resolve(capitalize(manufacturer) + " " + model);
+    }
+  }
+
+  /**
+   * 获取设备唯一标识（Android ID）
+   * 用于软件注册绑定设备，换手机后 Android ID 会不同，需要重新注册
+   */
+  @ReactMethod
+  public void getDeviceId(final Promise promise) {
+    try {
+      String androidId = Settings.Secure.getString(
+        reactContext.getContentResolver(),
+        Settings.Secure.ANDROID_ID
+      );
+      promise.resolve(androidId != null ? androidId.toUpperCase() : "");
+    } catch (Exception e) {
+      Log.e("Utils", "getDeviceId error", e);
+      promise.resolve("");
     }
   }
   private String capitalize(String s) {
