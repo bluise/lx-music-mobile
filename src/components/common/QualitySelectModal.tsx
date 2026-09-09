@@ -94,15 +94,17 @@ export default forwardRef<QualitySelectModalType>((_, ref) => {
                 underlayColor={theme['c-primary-background-active']}
                 onPress={() => { handleSelect(q) }}
               >
-                <View style={styles.itemLeft}>
-                  <Text size={15} color={theme['c-font']}>{getQualityLabel(q, t)}</Text>
-                  {
-                    size
-                      ? <Text style={styles.size} size={12} color={theme['c-font-label']}>{size}</Text>
-                      : null
-                  }
+                <View style={styles.itemRow}>
+                  <View style={styles.itemLeft}>
+                    <Text size={15} color={theme['c-font']}>{getQualityLabel(q, t)}</Text>
+                    {
+                      size
+                        ? <Text style={styles.size} size={12} color={theme['c-font-label']}>{size}</Text>
+                        : null
+                    }
+                  </View>
+                  <Icon name="chevron-right" color={theme['c-font-label']} size={14} />
                 </View>
-                <Icon name="chevron-right" color={theme['c-font-label']} size={14} />
               </TouchableHighlight>
             )
           })
@@ -113,12 +115,15 @@ export default forwardRef<QualitySelectModalType>((_, ref) => {
 })
 
 const styles = createStyle({
-  item: {
+  itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 15,
     height: scaleSizeH(46),
+  },
+  item: {
+    flexGrow: 1,
   },
   itemLeft: {
     flexDirection: 'row',
