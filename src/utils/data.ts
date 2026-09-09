@@ -517,7 +517,7 @@ const mergeBuiltinUserApi = (list: LX.UserApi.UserApiInfo[]): LX.UserApi.UserApi
 // key = `${userApiPrefix}${id}`，和 addUserApi 完全一致。
 const builtinUserApiScriptKey = `${userApiPrefix}${BUILTIN_USER_API_ID}`
 const builtinUserApiLastCheckKey = `${userApiPrefix}${BUILTIN_USER_API_ID}_last_check`
-const BUILTIN_USER_API_CHECK_INTERVAL = 7 * 24 * 60 * 60 * 1000 // 首次安装拉取，之后每周检查一次
+const BUILTIN_USER_API_CHECK_INTERVAL = 24 * 60 * 60 * 1000 // 每天首次打开检测一次
 
 // 从 update URL 拉取最新内置脚本（带超时）
 const fetchBuiltinScriptFromUrl = async(): Promise<string> => {
