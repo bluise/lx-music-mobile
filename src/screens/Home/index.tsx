@@ -9,6 +9,7 @@ import { navigations } from '@/navigation'
 import settingState from '@/store/setting/state'
 import { useBackHandler } from '@/utils/hooks/useBackHandler'
 import commonState from '@/store/common/state'
+import { toast } from '@/utils/tools'
 
 
 interface Props {
@@ -19,22 +20,19 @@ interface Props {
 export default ({ componentId }: Props) => {
   const isHorizontalMode = useHorizontalMode()
 
-  // 当导航栈已到根（只有 Home）且不在歌单页/设置页时，按返回跳转到歌单页
-  // 注意：JS BackHandler 会在 RNN navigator.handleBack() 之前被调！
-  // 所以必须用 componentIds 判断是否真的在根 stack
+  // [测试] 无条件拦截所有返回键，确认 BackHandler 有没有被调到
+  // 能看到 toast → handler 被调了，问题在条件判断
+  // 看不到 toast → handler 根本没被调，问题在 native/RNN 层
   useBackHandler(useCallback(() => {
     const ids = Object.keys(commonState.componentIds)
-    console.log('[Home BackHandler] triggered, componentIds keys:', ids, 'count:', ids.length)
-    console.log('[Home BackHandler] navActiveId:', commonState.navActiveId)
+    toast(`BACK: ids=${ids.length} (${ids.join(',')}) nav=${commonState.navActiveId}`)
+
     if (ids.length == 1 && ids[0] == COMPONENT_IDS.home) {
-      console.log('[Home BackHandler] at root stack')
       if (commonState.navActiveId != 'nav_songlist' && commonState.navActiveId != 'nav_setting') {
-        console.log('[Home BackHandler] switching to songlist, returning true')
         setNavActiveId('nav_songlist')
         return true
       }
     }
-    console.log('[Home BackHandler] returning false (navigator will handle)')
     return false
   }, []))
 
