@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
@@ -380,6 +381,41 @@ public class UtilsModule extends ReactContextBaseJavaModule {
         promise.reject("ERROR", e);
       }
     }).start();
+  }
+
+  /**
+   * 检查 Android 11+ 是否拥有"所有文件访问"权限（MANAGE_EXTERNAL_STORAGE）
+   * Android 11 (API 30) 以下直接返回 true（分区存储豁免）
+   */
+  @ReactMethod
+  public void isExternalStorageManager(Promise promise) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      promise.resolve(Environment.isExternalStorageManager());
+    } else {
+      promise.resolve(true);
+    }
+  }
+
+  /**
+   * 跳转到系统"所有文件访问权限"设置页，让用户手动授权
+   */
+  @ReactMethod
+  public void openManageAllFilesAccessActivity() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return;
+    try {
+      Intent intent = new Intent();
+      intent.setAction(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+      Uri uri = Uri.fromParts("package", reactContext.getPackageName(), null);
+      intent.setData(uri);
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+      reactContext.startActivity(intent);
+    } catch (Exception e) {
+      // 某些 ROM 不支持 ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION，退回到通用页
+      Intent intent = new Intent();
+      intent.setAction(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+      reactContext.startActivity(intent);
+    }
   }
 }
 

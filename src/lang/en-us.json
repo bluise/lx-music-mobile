@@ -534,6 +534,7 @@
   "download_paused": "Paused",
   "download_get_url_failed": "Failed to get download link",
   "download_task_exists": "This song is already in the download list",
+  "download_no_permission": "Storage permission denied",
   "download_status_run": "Downloading",
   "download_status_waiting": "Waiting",
   "download_status_pause": "Paused",

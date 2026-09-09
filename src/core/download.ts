@@ -7,7 +7,7 @@ import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import { getPlayQuality } from './music/utils'
 import settingState from '@/store/setting/state'
-import { toast } from '@/utils/tools'
+import { checkStoragePermissions, requestStoragePermission, toast } from '@/utils/tools'
 
 const DOWNLOAD_LIST_KEY = storageDataPrefix.list + 'download'
 const MAX_CONCURRENT = 2
@@ -156,6 +156,15 @@ const formatSpeed = (bytes: number): string => {
  * 添加下载任务
  */
 export const addDownload = async(musicInfo: LX.Music.MusicInfoOnline, quality?: LX.Quality): Promise<void> => {
+  // 权限前置检查：没权限就弹系统弹窗/跳转设置页
+  if (!(await checkStoragePermissions())) {
+    const granted = await requestStoragePermission()
+    if (granted !== true) {
+      toast(global.i18n.t('download_no_permission'))
+      return
+    }
+  }
+
   // 检查是否已存在相同任务
   const exist = downloadState.list.find(
     item => item.metadata.musicInfo.id == musicInfo.id && !item.isComplate,

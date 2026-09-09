@@ -3,7 +3,7 @@ import { Platform, ToastAndroid, BackHandler, Linking, Dimensions, Alert, Appear
 import Clipboard from '@react-native-clipboard/clipboard'
 import { storageDataPrefix } from '@/config/constant'
 import { gzipFile, readFile, temporaryDirectoryPath, unGzipFile, unlink, writeFile } from '@/utils/fs'
-import { getSystemLocales, isIgnoringBatteryOptimization, isNotificationsEnabled, requestNotificationPermission, requestIgnoreBatteryOptimization, shareText } from '@/utils/nativeModules/utils'
+import { getSystemLocales, isExternalStorageManager, isIgnoringBatteryOptimization, isNotificationsEnabled, requestManageAllFilesAccess, requestNotificationPermission, requestIgnoreBatteryOptimization, shareText } from '@/utils/nativeModules/utils'
 import musicSdk from '@/utils/musicSdk'
 import { getData, removeData, saveData } from '@/plugins/storage'
 import BackgroundTimer from 'react-native-background-timer'
@@ -56,43 +56,57 @@ export const TEMP_FILE_PATH = temporaryDirectoryPath + '/tempFile'
 //   // return windowSize
 // }
 
-export const checkStoragePermissions = async() => PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE)
+/**
+ * 检查存储写入权限（能往 /sdcard/Music/ 写东西）
+ * - Android 11+ (API 30): 走 MANAGE_EXTERNAL_STORAGE（所有文件访问）
+ * - Android 10 及以下: 走 WRITE_EXTERNAL_STORAGE
+ * - iOS / 非 Android: 直接 true
+ */
+export const checkStoragePermissions = async(): Promise<boolean> => {
+  if (!isAndroid) return true
+  if (Number(Platform.Version) >= 30) {
+    return isExternalStorageManager()
+  }
+  try {
+    return PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE)
+  } catch {
+    return false
+  }
+}
 
-export const requestStoragePermission = async() => {
-  const isGranted = await checkStoragePermissions()
-  if (isGranted) return isGranted
+/**
+ * 请求存储写入权限
+ * - Android 11+ 会跳转到系统"所有文件访问"设置页，用户手动开启后自动回查结果
+ * - Android 10 及以下弹出系统权限弹窗
+ * - iOS / 非 Android: 直接 true
+ * 返回值: true=已授权  false=拒绝  null=永久拒绝(Never Ask Again)
+ */
+export const requestStoragePermission = async(): Promise<boolean | null> => {
+  if (!isAndroid) return true
+
+  // 已授权直接返回
+  if (await checkStoragePermissions()) return true
 
   try {
+    if (Number(Platform.Version) >= 30) {
+      // Android 11+: MANAGE_EXTERNAL_STORAGE 必须用户手动在设置里开
+      return (await requestManageAllFilesAccess()) ? true : false
+    }
+
+    // Android 10 及以下: 常规运行时权限弹窗
     const granted = await PermissionsAndroid.requestMultiple(
       [
         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
         PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
       ],
-      // {
-      //   title: '存储读写权限申请',
-      //   message:
-      //     '洛雪音乐助手需要使用存储读写权限才能下载歌曲.',
-      //   buttonNeutral: '一会再问我',
-      //   buttonNegative: '取消',
-      //   buttonPositive: '确定',
-      // },
     )
-    // console.log(granted)
-    // console.log(Object.values(granted).every(r => r === PermissionsAndroid.RESULTS.GRANTED))
-    // console.log(PermissionsAndroid.RESULTS)
     const granteds = Object.values(granted)
     return granteds.every(r => r === PermissionsAndroid.RESULTS.GRANTED)
       ? true
       : granteds.includes(PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN)
         ? null
         : false
-    // if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-    //   console.log('You can use the storage')
-    // } else {
-    //   console.log('Storage permission denied')
-    // }
-  } catch (err: any) {
-    // console.warn(err)
+  } catch {
     return false
   }
 }

@@ -99,3 +99,32 @@ export const requestIgnoreBatteryOptimization = async() => new Promise<boolean>(
     resolve(false)
   })
 })
+
+/**
+ * 检查 Android 11+ 是否拥有"所有文件访问"权限
+ * Android 11 以下直接返回 true
+ */
+export const isExternalStorageManager = async(): Promise<boolean> => {
+  return UtilsModule.isExternalStorageManager()
+}
+
+/**
+ * 跳转到系统"所有文件访问权限"设置页，并等待用户返回后再检查结果
+ */
+export const requestManageAllFilesAccess = async(): Promise<boolean> => new Promise((resolve) => {
+  let subscription: { remove: () => void } | null = AppState.addEventListener('change', (state) => {
+    if (state != 'active') return
+    subscription?.remove()
+    setTimeout(() => {
+      void UtilsModule.isExternalStorageManager().then((granted: boolean) => resolve(granted))
+    }, 800)
+  })
+  UtilsModule.openManageAllFilesAccessActivity()
+  // 保险：如果 15 秒后还没 resolve，就回查一次
+  setTimeout(() => {
+    if (!subscription) return
+    subscription.remove()
+    subscription = null
+    void UtilsModule.isExternalStorageManager().then((granted: boolean) => resolve(granted))
+  }, 15000)
+})

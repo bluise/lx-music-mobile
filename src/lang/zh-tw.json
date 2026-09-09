@@ -534,6 +534,7 @@
   "download_paused": "已暫停",
   "download_get_url_failed": "取得下載連結失敗",
   "download_task_exists": "該歌曲已在下載列表中",
+  "download_no_permission": "未獲得存儲權限",
   "download_status_run": "下載中",
   "download_status_waiting": "等待中",
   "download_status_pause": "已暫停",
