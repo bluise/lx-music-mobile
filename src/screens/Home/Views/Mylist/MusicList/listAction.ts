@@ -118,16 +118,16 @@ export const handleShowMusicSourceDetail = async(minfo: SelectInfo['musicInfo'])
   void openUrl(url)
 }
 
-export const handleDownload = (musicInfo: SelectInfo['musicInfo'], selectedList: SelectInfo['selectedList']) => {
+export const handleDownload = (musicInfo: SelectInfo['musicInfo'], selectedList: SelectInfo['selectedList'], quality?: LX.Quality) => {
   const onlineList = (selectedList.length ? selectedList : [musicInfo]).filter(
     (m): m is LX.Music.MusicInfoOnline => m.source != 'local',
   )
   if (!onlineList.length) return
   if (onlineList.length > 1) {
-    addDownloads(onlineList)
+    addDownloads(onlineList, quality)
     toast(global.i18n.t('download_added_tasks', { num: onlineList.length }))
   } else {
-    void addDownload(onlineList[0])
+    void addDownload(onlineList[0], quality)
   }
 }
 

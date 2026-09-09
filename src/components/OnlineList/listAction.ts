@@ -38,12 +38,12 @@ export const handleShowMusicSourceDetail = async(minfo: LX.Music.MusicInfoOnline
   void openUrl(url)
 }
 
-export const handleDownload = (musicInfo: LX.Music.MusicInfoOnline, selectedList: LX.Music.MusicInfoOnline[]) => {
+export const handleDownload = (musicInfo: LX.Music.MusicInfoOnline, selectedList: LX.Music.MusicInfoOnline[], quality?: LX.Quality) => {
   if (selectedList.length) {
-    addDownloads(selectedList)
+    addDownloads(selectedList, quality)
     toast(global.i18n.t('download_added_tasks', { num: selectedList.length }))
   } else {
-    void addDownload(musicInfo)
+    void addDownload(musicInfo, quality)
   }
 }
 

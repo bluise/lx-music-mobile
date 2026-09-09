@@ -213,6 +213,13 @@
   "quality_high_quality": "HQ",
   "quality_lossless": "SQ",
   "quality_lossless_24bit": "24bit",
+  "quality_flac_24bit": "FLAC (24bit)",
+  "quality_flac": "FLAC",
+  "quality_ape": "APE",
+  "quality_wav": "WAV",
+  "quality_mp3_320k": "MP3 (320k)",
+  "quality_mp3_192k": "MP3 (192k)",
+  "quality_mp3_128k": "MP3 (128k)",
   "search__welcome": "搜我所想~~😉",
   "search_history_search": "歷史搜尋",
   "search_hot_search": "熱門搜尋",
@@ -533,5 +540,6 @@
   "download_status_error": "下載失敗",
   "download_status_completed": "已完成",
   "download": "下載",
-  "download_added_tasks": "已新增 {num} 個下載任務"
+  "download_added_tasks": "已新增 {num} 個下載任務",
+  "download_select_quality": "選擇音質"
 }

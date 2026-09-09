@@ -6,6 +6,7 @@ import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './L
 import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } from '@/components/MusicMultiAddModal'
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import MultipleModeBar, { type MultipleModeBarType, type SelectMode } from './MultipleModeBar'
+import QualitySelectModal, { type QualitySelectModalType } from '@/components/common/QualitySelectModal'
 import { handleDislikeMusic, handleDownload, handlePlay, handlePlayLater, handleShare, handleShowMusicSourceDetail } from './listAction'
 import { createStyle } from '@/utils/tools'
 
@@ -37,6 +38,7 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
   const listMusicAddRef = useRef<ListMusicAddType>(null)
   const listMusicMultiAddRef = useRef<ListAddMultiType>(null)
   const listMenuRef = useRef<ListMenuType>(null)
+  const qualitySelectModalRef = useRef<QualitySelectModalType>(null)
   // const loadingMaskRef = useRef<LoadingMaskType>(null)
 
   useImperativeHandle(ref, () => ({
@@ -78,6 +80,17 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
     }
   }
 
+  const handleShowDownloadQuality = (info: SelectInfo) => {
+    const targetList = info.selectedList.length ? info.selectedList : [info.musicInfo]
+    qualitySelectModalRef.current?.show({
+      musicInfo: targetList[0],
+      onSelect: (quality) => {
+        hancelExitSelect()
+        handleDownload(info.musicInfo, info.selectedList, quality)
+      },
+    })
+  }
+
   return (
     <View style={styles.container}>
       <View style={{ flex: 1 }}>
@@ -107,12 +120,13 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
         ref={listMenuRef}
         onPlay={info => { handlePlay(info.musicInfo) }}
         onPlayLater={info => { hancelExitSelect(); handlePlayLater(info.musicInfo, info.selectedList, hancelExitSelect) }}
-        onDownload={info => { hancelExitSelect(); handleDownload(info.musicInfo, info.selectedList) }}
+        onDownload={handleShowDownloadQuality}
         onCopyName={info => { handleShare(info.musicInfo) }}
         onAdd={handleAddMusic}
         onMusicSourceDetail={info => { void handleShowMusicSourceDetail(info.musicInfo) }}
         onDislikeMusic={info => { void handleDislikeMusic(info.musicInfo) }}
       />
+      <QualitySelectModal ref={qualitySelectModalRef} />
       {/* <LoadingMask ref={loadingMaskRef} /> */}
     </View>
   )

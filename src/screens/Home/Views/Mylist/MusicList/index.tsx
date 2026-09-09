@@ -15,6 +15,7 @@ import ListMusicSearch, { type ListMusicSearchType } from './ListMusicSearch'
 import MusicPositionModal, { type MusicPositionModalType } from './MusicPositionModal'
 import MetadataEditModal, { type MetadataEditType, type MetadataEditProps } from '@/components/MetadataEditModal'
 import MusicToggleModal, { type MusicToggleModalType } from './MusicToggleModal'
+import QualitySelectModal, { type QualitySelectModalType } from '@/components/common/QualitySelectModal'
 
 
 export default () => {
@@ -30,6 +31,7 @@ export default () => {
   const metadataEditTypeRef = useRef<MetadataEditType>(null)
   const listMenuRef = useRef<ListMenuType>(null)
   const musicToggleModalRef = useRef<MusicToggleModalType>(null)
+  const qualitySelectModalRef = useRef<QualitySelectModalType>(null)
   const layoutHeightRef = useRef<number>(0)
   const isShowMultipleModeBar = useRef(false)
   const isShowSearchBarModeBar = useRef(false)
@@ -118,6 +120,20 @@ export default () => {
     handleUpdateMusicInfo(selectedInfoRef.current.listId, selectedInfoRef.current.musicInfo, info)
   }, [])
 
+  const handleShowDownloadQuality = useCallback((info: SelectInfo) => {
+    const onlineList = (info.selectedList.length ? info.selectedList : [info.musicInfo]).filter(
+      (m): m is LX.Music.MusicInfoOnline => m.source != 'local',
+    )
+    if (!onlineList.length) return
+    qualitySelectModalRef.current?.show({
+      musicInfo: onlineList[0],
+      onSelect: (quality) => {
+        hancelExitSelect()
+        handleDownload(info.musicInfo, info.selectedList, quality)
+      },
+    })
+  }, [hancelExitSelect])
+
 
   return (
     <View style={styles.container}>
@@ -155,7 +171,7 @@ export default () => {
         ref={listMenuRef}
         onPlay={info => { handlePlay(info.listId, info.index) }}
         onPlayLater={info => { hancelExitSelect(); handlePlayLater(info.listId, info.musicInfo, info.selectedList, hancelExitSelect) }}
-        onDownload={info => { hancelExitSelect(); handleDownload(info.musicInfo, info.selectedList) }}
+        onDownload={handleShowDownloadQuality}
         onRemove={info => { hancelExitSelect(); handleRemove(info.listId, info.musicInfo, info.selectedList, hancelExitSelect) }}
         onDislikeMusic={info => { void handleDislikeMusic(info.musicInfo) }}
         onCopyName={info => { handleShare(info.musicInfo) }}
@@ -171,6 +187,7 @@ export default () => {
         onUpdate={handleUpdateMetadata}
       />
       <MusicToggleModal ref={musicToggleModalRef} />
+      <QualitySelectModal ref={qualitySelectModalRef} />
     </View>
   )
 }

@@ -213,6 +213,13 @@
   "quality_high_quality": "HQ",
   "quality_lossless": "SQ",
   "quality_lossless_24bit": "24bit",
+  "quality_flac_24bit": "FLAC (24bit)",
+  "quality_flac": "FLAC",
+  "quality_ape": "APE",
+  "quality_wav": "WAV",
+  "quality_mp3_320k": "MP3 (320k)",
+  "quality_mp3_192k": "MP3 (192k)",
+  "quality_mp3_128k": "MP3 (128k)",
   "search__welcome": "Search what I want~~😉",
   "search_history_search": "Search History",
   "search_hot_search": "Top Searches",
@@ -533,5 +540,6 @@
   "download_status_error": "Failed",
   "download_status_completed": "Completed",
   "download": "Download",
-  "download_added_tasks": "Added {num} download tasks"
+  "download_added_tasks": "Added {num} download tasks",
+  "download_select_quality": "Select Quality"
 }
