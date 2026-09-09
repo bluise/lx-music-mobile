@@ -14,6 +14,7 @@ import settingState from '@/store/setting/state'
 import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
 import { cheatTip } from '@/utils/tools'
+import { BUILTIN_USER_API_ID } from '@/resources/userApi/builtin'
 
 let isFirstPush = true
 const handlePushedHomeScreen = async() => {
@@ -48,7 +49,7 @@ export default async() => {
   await initUserApi(setting)
   bootLog('User Api inited.')
 
-  setApiSource(setting['common.apiSource'])
+  setApiSource(setting['common.apiSource'] || BUILTIN_USER_API_ID)
   bootLog('Api inited.')
 
   registerPlaybackService()

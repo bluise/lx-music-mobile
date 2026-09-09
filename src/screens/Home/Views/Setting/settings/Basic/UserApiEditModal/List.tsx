@@ -13,6 +13,7 @@ import { Icon } from '@/components/common/Icon'
 import settingState from '@/store/setting/state'
 import apiSourceInfo from '@/utils/musicSdk/api-source-info'
 import { setApiSource } from '@/core/apiSource'
+import { BUILTIN_USER_API_ID } from '@/resources/userApi/builtin'
 
 const formatVersionName = (version: string) => {
   return /^\d/.test(version) ? `v${version}` : version
@@ -56,9 +57,11 @@ const ListItem = ({ item, activeId, onRemove, onChangeAllowShowUpdateAlert }: {
         <CheckBox check={item.allowShowUpdateAlert} label={t('user_api_allow_show_update_alert')} onChange={changeAllowShowUpdateAlert} size={0.86} />
       </View>
       <View style={styles.listItemRight}>
-        <TouchableOpacity style={styles.btn} onPress={handleRemove}>
-          <Icon name="close" color={theme['c-button-font']} />
-        </TouchableOpacity>
+        {item.id === BUILTIN_USER_API_ID ? null : (
+          <TouchableOpacity style={styles.btn} onPress={handleRemove}>
+            <Icon name="close" color={theme['c-button-font']} />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   )

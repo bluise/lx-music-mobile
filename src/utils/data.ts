@@ -1,6 +1,7 @@
 import { getData, saveData, getAllKeys, removeDataMultiple, saveDataMultiple, removeData, getDataMultiple } from '@/plugins/storage'
 import { DEFAULT_SETTING, LIST_IDS, storageDataPrefix, type NAV_ID_Type } from '@/config/constant'
 import { throttle } from './common'
+import { BUILTIN_USER_API_ID, BUILTIN_USER_API_INFO, BUILTIN_USER_API_UPDATE_URL, BUILTIN_USER_API_FALLBACK_SCRIPT } from '@/resources/userApi/builtin'
 // import { gzip, ungzip } from '@/utils/nativeModules/gzip'
 // import { readFile, writeFile, temporaryDirectoryPath, unlink } from '@/utils/fs'
 // import { isNotificationsEnabled, openNotificationPermissionActivity, shareText } from '@/utils/nativeModules/utils'
@@ -495,6 +496,69 @@ export const removeSyncHostHistory = async(index: number) => {
 }
 
 let userApis: LX.UserApi.UserApiInfo[] = []
+
+// 将内置音源信息合并进返回列表（始终置顶，且不可删除）
+const mergeBuiltinUserApi = (list: LX.UserApi.UserApiInfo[]): LX.UserApi.UserApiInfo[] => {
+  const result = list.filter(api => api.id !== BUILTIN_USER_API_ID)
+  result.unshift(BUILTIN_USER_API_INFO)
+  return result
+}
+
+const builtinUserApiScriptCacheKey = `${userApiPrefix}${BUILTIN_USER_API_ID}`
+
+// 从 update URL 拉取最新内置脚本（带超时）
+const fetchBuiltinScriptFromUrl = async(): Promise<string> => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 13_000)
+  try {
+    const resp = await fetch(BUILTIN_USER_API_UPDATE_URL, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Pixel 3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.79 Mobile Safari/537.36',
+      },
+    })
+    if (!resp.ok) throw new Error(`builtin user api http ${resp.status}`)
+    const script = await resp.text()
+    if (!script || script.length < 100) throw new Error('builtin user api empty script')
+    return script
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// 获取内置脚本：优先从 URL 拉取最新并缓存；失败时回退到缓存，再回退到打包兜底
+export const getBuiltinUserApiScript = async(): Promise<string> => {
+  try {
+    const script = await fetchBuiltinScriptFromUrl()
+    void saveData(builtinUserApiScriptCacheKey, script)
+    return script
+  } catch (err) {
+    console.log('builtin user api fetch failed, fallback to cache', err)
+    const cached = await getData<string>(builtinUserApiScriptCacheKey)
+    if (cached) return cached
+    return BUILTIN_USER_API_FALLBACK_SCRIPT
+  }
+}
+
+// 后台刷新内置脚本缓存，便于每次启动自动更新。
+// 仅当缓存已存在且内容变化时返回 changed=true，触发重新加载。
+export const refreshBuiltinUserApiScript = async(): Promise<{ changed: boolean }> => {
+  const prev = await getData<string>(builtinUserApiScriptCacheKey)
+  if (prev == null) return { changed: false }
+  let script: string
+  try {
+    script = await fetchBuiltinScriptFromUrl()
+  } catch (err) {
+    console.log('builtin user api refresh failed', err)
+    return { changed: false }
+  }
+  if (script && script !== prev) {
+    void saveData(builtinUserApiScriptCacheKey, script)
+    return { changed: true }
+  }
+  return { changed: false }
+}
+
 export const getUserApiList = async(): Promise<LX.UserApi.UserApiInfo[]> => {
   userApis = await getData<LX.UserApi.UserApiInfo[]>(userApiPrefix) ?? []
 
@@ -508,9 +572,10 @@ export const getUserApiList = async(): Promise<LX.UserApi.UserApiInfo[]> => {
   }
   if (updated) void saveData(userApiPrefix, userApis)
 
-  return [...userApis]
+  return mergeBuiltinUserApi([...userApis])
 }
 export const getUserApiScript = async(id: string): Promise<string> => {
+  if (id === BUILTIN_USER_API_ID) return getBuiltinUserApiScript()
   const script = await getData<string>(`${userApiPrefix}${id}`) ?? ''
   return script
 }
@@ -563,18 +628,19 @@ export const addUserApi = async(script: string): Promise<LX.UserApi.UserApiInfo>
   return apiInfo
 }
 export const removeUserApi = async(ids: string[]) => {
-  if (!userApis) return []
+  if (!userApis) return mergeBuiltinUserApi([])
+  // 内置音源不可删除
+  const removableIds = ids.filter(id => id !== BUILTIN_USER_API_ID)
   const _ids: string[] = []
   for (let index = userApis.length - 1; index > -1; index--) {
-    if (ids.includes(userApis[index].id)) {
+    if (removableIds.includes(userApis[index].id)) {
       _ids.push(`${userApiPrefix}${userApis[index].id}`)
       userApis.splice(index, 1)
-      ids.splice(index, 1)
     }
   }
   await saveData(userApiPrefix, userApis)
   if (_ids.length) await removeDataMultiple(_ids)
-  return [...userApis]
+  return mergeBuiltinUserApi([...userApis])
 }
 export const setUserApiAllowShowUpdateAlert = async(id: string, enable: boolean) => {
   const targetApi = userApis?.find(api => api.id == id)
