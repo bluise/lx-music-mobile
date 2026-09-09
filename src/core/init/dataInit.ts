@@ -32,7 +32,7 @@ export default async(appSetting: LX.AppSetting) => {
   setUserList(await getUserLists()) // 获取用户列表
   setDislikeInfo(await getDislikeInfo()) // 获取不喜欢列表
   bootLog('User list inited.')
-  setNavActiveId((await getViewPrevState()).id)
+  setNavActiveId('nav_songlist')
   void unlink(TEMP_FILE_PATH)
   void loadDownloadList()
   // await initPrevPlayInfo(appSetting).catch(err => log.error(err)) // 初始化上次的歌曲播放信息
