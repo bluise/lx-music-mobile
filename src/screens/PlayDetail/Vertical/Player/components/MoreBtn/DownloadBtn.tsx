@@ -31,7 +31,7 @@ export default () => {
 
   return (
     <>
-      <Btn icon="download-2" onPress={handleDownload} />
+      <Btn icon="download-2" iconSize={20} onPress={handleDownload} />
       <QualitySelectModal ref={qualitySelectModalRef} />
     </>
   )
